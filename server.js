@@ -2,6 +2,7 @@ import express from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import path from 'path'
+import fs from 'fs'
 import bcrypt from 'bcrypt'
 import { fileURLToPath } from 'url'
 import connectDB from './config/db.js'
@@ -70,6 +71,26 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req,res) => {
     res.send('Blood bank server is ok');
 })
+
+// Optionally serve the frontend build from the repository's `frontend/dist`.
+// Railway will run the root `postinstall` script to build the frontend into `frontend/dist`.
+const serveFrontend = process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production'
+if (serveFrontend) {
+  const clientBuildPath = path.resolve(__dirname, '..', 'frontend', 'dist')
+  try {
+    if (fs.existsSync(clientBuildPath)) {
+      app.use(express.static(clientBuildPath))
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(clientBuildPath, 'index.html'))
+      })
+      console.log('Serving frontend from', clientBuildPath)
+    } else {
+      console.log('Frontend build not found at', clientBuildPath)
+    }
+  } catch (err) {
+    console.warn('Error while trying to serve frontend:', err.message)
+  }
+}
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
